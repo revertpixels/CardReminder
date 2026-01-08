@@ -1,0 +1,336 @@
+<%- include('header') %>
+
+<style>
+    /* --- PAGE STYLING --- */
+    body {
+        background-color: #f8f9fa;
+    }
+
+    .form-container {
+        max-width: 800px;
+        margin: 40px auto;
+        background: #ffffff;
+        border-radius: 24px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+        padding: 40px;
+        border: 1px solid rgba(0,0,0,0.02);
+    }
+
+    .page-title {
+        font-weight: 800;
+        color: #1a1a1a;
+        margin-bottom: 10px;
+    }
+
+    .section-label {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #6c757d;
+        font-weight: 700;
+        margin-bottom: 15px;
+        margin-top: 25px;
+        display: block;
+    }
+
+    /* --- BANK GRID --- */
+    .bank-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 15px;
+    }
+
+    .bank-option input { display: none; }
+
+    .bank-card {
+        border: 2px solid #f1f3f5;
+        border-radius: 16px;
+        padding: 15px 10px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: #fff;
+    }
+
+    .bank-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        border-color: #dee2e6;
+    }
+
+    .bank-card img {
+        width: 45px;
+        height: 45px;
+        object-fit: contain;
+        margin-bottom: 8px;
+    }
+
+    .bank-card span {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #495057;
+        line-height: 1.2;
+    }
+
+    /* Selected Bank State */
+    .bank-option input:checked + .bank-card {
+        border-color: #4f46e5;
+        background-color: #eef2ff;
+        box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+    }
+    .bank-option input:checked + .bank-card span {
+        color: #4f46e5;
+    }
+
+    /* --- COLOR GRID --- */
+    .color-grid {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .color-option input { display: none; }
+
+    .color-circle {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        border: 3px solid white;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .color-option input:checked + .color-circle {
+        transform: scale(1.15);
+        box-shadow: 0 0 0 3px #4f46e5;
+    }
+
+    /* --- FORM CONTROLS --- */
+    .form-floating > .form-control,
+    .form-floating > .form-select {
+        border-radius: 12px;
+        border: 1px solid #dee2e6;
+        padding-top: 1.625rem;
+        padding-bottom: 0.625rem;
+    }
+
+    .form-floating > .form-control:focus,
+    .form-floating > .form-select:focus {
+        border-color: #4f46e5;
+        box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+    }
+
+    /* --- TOGGLE SWITCHES --- */
+    .form-check-input {
+        width: 3em;
+        height: 1.5em;
+        cursor: pointer;
+        background-color: #e9ecef;
+        border: none;
+    }
+    .form-check-input:checked {
+        background-color: #4f46e5;
+    }
+    .form-switch .form-check-input {
+        margin-left: -2.5em;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e");
+    }
+    .toggle-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px solid #f1f3f5;
+    }
+    .toggle-row:last-child { border-bottom: none; }
+
+    .btn-primary-custom {
+        background: #111;
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-weight: 700;
+        padding: 15px;
+        font-size: 1rem;
+        transition: 0.3s;
+    }
+    .btn-primary-custom:hover {
+        background: #333;
+        transform: translateY(-2px);
+    }
+</style>
+
+<div class="form-container">
+    <div class="text-center mb-5">
+        <h2 class="page-title">Add New Card</h2>
+        <p class="text-muted">Enter your credit card details to get reminders.</p>
+    </div>
+
+    <form action="/add-card" method="POST">
+
+        <span class="section-label">Card Details</span>
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <div class="form-floating">
+                    <input type="text" name="holderName" class="form-control" id="holderName" placeholder="Name" required>
+                    <label for="holderName">Card Holder Name</label>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-floating">
+                    <input type="text" name="cardNickname" class="form-control" id="cardNick" placeholder="Nick">
+                    <label for="cardNick">Card Nickname (e.g. Shopping)</label>
+                </div>
+            </div>
+        </div>
+
+        <span class="section-label">Select Bank</span>
+        <div class="bank-grid mb-3">
+            <% banks.forEach((bank, index) => {
+                let logoName = bank.toLowerCase().replace(/ /g, '-') + '.png';
+            %>
+            <label class="bank-option">
+                <input type="radio" name="selectedBank" value="<%= bank %>" onclick="toggleOtherBank(false)" required>
+                <div class="bank-card">
+                    <img src="/assets/logos/<%= logoName %>" onerror="this.src='/assets/logos/default.png'">
+                    <span><%= bank.split(' ')[0] %></span>
+                </div>
+            </label>
+            <% }) %>
+
+            <label class="bank-option">
+                <input type="radio" name="selectedBank" value="Other" onclick="toggleOtherBank(true)">
+                <div class="bank-card bg-light">
+                    <span style="font-size: 24px; color: #adb5bd;">+</span>
+                    <span>Other</span>
+                </div>
+            </label>
+        </div>
+
+        <div class="mb-4" id="otherBankInput" style="display: none;">
+            <div class="form-floating">
+                <input type="text" name="customBankName" class="form-control" id="customBank" placeholder="Bank Name">
+                <label for="customBank">Enter Bank Name</label>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <div class="form-floating">
+                    <select name="cardNetwork" class="form-select" id="cardNetwork" required>
+                        <option value="Visa">Visa</option>
+                        <option value="MasterCard">MasterCard</option>
+                        <option value="RuPay">RuPay</option>
+                        <option value="American Express">American Express</option>
+                        <option value="Diners Club">Diners Club</option>
+                        <option value="Debit Card">Debit Card</option>
+                    </select>
+                    <label for="cardNetwork">Card Network</label>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-floating">
+                    <input type="number" name="lastFourDigits" class="form-control" id="last4" placeholder="1234" max="9999" required>
+                    <label for="last4">Last 4 Digits</label>
+                </div>
+            </div>
+        </div>
+
+        <span class="section-label">Dates & Limits</span>
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="form-floating">
+                    <select name="billingDate" class="form-select" id="billDate" required>
+                        <option value="" disabled selected>Select Day</option>
+                        <% for(let i=1; i<=31; i++) { %>
+                            <option value="<%= i %>"><%= i %><%= (i===1||i===21||i===31)?'st':(i===2||i===22)?'nd':(i===3||i===23)?'rd':'th' %></option>
+                        <% } %>
+                    </select>
+                    <label for="billDate">Billing Day</label>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-floating">
+                    <select name="dueDate" class="form-select" id="dueDate" required>
+                        <option value="" disabled selected>Select Day</option>
+                        <% for(let i=1; i<=31; i++) { %>
+                            <option value="<%= i %>"><%= i %><%= (i===1||i===21||i===31)?'st':(i===2||i===22)?'nd':(i===3||i===23)?'rd':'th' %></option>
+                        <% } %>
+                    </select>
+                    <label for="dueDate">Due Day</label>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-floating">
+                    <input type="number" name="creditLimit" class="form-control" id="limit" placeholder="50000">
+                    <label for="limit">Credit Limit (Optional)</label>
+                </div>
+            </div>
+        </div>
+
+        <span class="section-label text-center">Pick a Card Color</span>
+        <div class="color-grid mb-5">
+            <% const colors = ['#0d253f', '#0099ff', '#ff8c42', '#00c851', '#5e5ce6', '#ff4081', '#ffbb33', '#37474f', '#1c1c1c', '#ef5350']; %>
+            <% colors.forEach((color, index) => { %>
+                <label class="color-option">
+                    <input type="radio" name="cardColor" value="<%= color %>" <%= index === 0 ? 'checked' : '' %>>
+                    <div class="color-circle" style="background-color: <%= color %>;"></div>
+                </label>
+            <% }) %>
+        </div>
+
+        <div class="p-3 bg-light rounded-4 mb-4">
+            <div class="toggle-row form-switch">
+                <label class="form-check-label fw-bold" for="notifyBilling">Notify on Billing Date</label>
+                <input class="form-check-input" type="checkbox" name="notifyOnBilling" id="notifyBilling">
+            </div>
+
+            <div class="toggle-row form-switch">
+                <label class="form-check-label fw-bold" for="notifyDue">Notify Before Due Date</label>
+                <input class="form-check-input" type="checkbox" name="notifyBeforeDue" id="notifyDue" onchange="toggleDueOptions()">
+            </div>
+
+            <div class="mt-3 pt-3 border-top" id="dueDaysOptions" style="display: none;">
+                <label class="form-label small text-muted text-uppercase fw-bold">Remind me before:</label>
+                <div class="btn-group w-100" role="group">
+                    <% [1, 3, 5, 7].forEach((day, idx) => { %>
+                        <input type="radio" class="btn-check" name="notifyDaysBefore" value="<%= day %>" id="d<%= day %>" autocomplete="off" <%= idx===0 ? 'checked' : '' %>>
+                        <label class="btn btn-outline-dark btn-sm py-2" for="d<%= day %>"><%= day %> Day<%= day>1?'s':'' %></label>
+                    <% }) %>
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary-custom w-100 shadow-lg">Save Card Details</button>
+    </form>
+</div>
+
+<script>
+    function toggleOtherBank(show) {
+        const inputDiv = document.getElementById('otherBankInput');
+        const inputField = document.getElementById('customBank');
+        if (show) {
+            inputDiv.style.display = 'block';
+            inputField.required = true;
+            inputField.focus();
+        } else {
+            inputDiv.style.display = 'none';
+            inputField.required = false;
+        }
+    }
+
+    function toggleDueOptions() {
+        const checkbox = document.getElementById('notifyDue');
+        const optionsDiv = document.getElementById('dueDaysOptions');
+        optionsDiv.style.display = checkbox.checked ? 'block' : 'none';
+    }
+</script>
+
+<%- include('footer') %>

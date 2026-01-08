@@ -1,0 +1,19 @@
+<%- include('header') %>
+
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5">
+        <div class="card card-custom p-4">
+            <h3 class="text-center">Verify OTP</h3>
+            <p class="text-center text-muted small">Check your email inbox</p>
+            <form action="/verify-otp" method="POST">
+                <div class="mb-3">
+                    <label class="form-label">Enter 6-Digit OTP</label>
+                    <input type="text" name="otp" class="form-control text-center fs-4" placeholder="XXXXXX" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Verify</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<%- include('footer') %>

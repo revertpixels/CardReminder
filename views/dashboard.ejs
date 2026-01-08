@@ -1,0 +1,433 @@
+<%- include('header') %>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+    /* --- STATS SUMMARY ROW STYLES --- */
+    .stats-card {
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        height: 100%;
+        border: 1px solid rgba(0,0,0,0.03);
+    }
+
+    .stats-icon-box {
+        width: 45px; height: 45px;
+        border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.2rem; margin-bottom: 15px;
+    }
+
+    .bg-light-blue { background-color: #eef2ff; color: #4f46e5; }
+    .bg-light-red { background-color: #fef2f2; color: #ef4444; }
+    .bg-light-orange { background-color: #fff7ed; color: #f97316; }
+    .bg-light-green { background-color: #f0fdf4; color: #22c55e; }
+
+    .stats-value { font-size: 2rem; font-weight: 700; color: #111827; line-height: 1; margin-bottom: 5px; }
+    .stats-label { font-size: 0.85rem; color: #6b7280; font-weight: 500; }
+
+    /* --- CARD STYLES --- */
+    .credit-card-container {
+        perspective: 1000px; cursor: pointer;
+        transition: transform 0.3s ease; margin-bottom: 30px;
+    }
+    .credit-card-container:hover { transform: translateY(-5px); }
+
+    .credit-card {
+        width: 100%; max-width: 400px; height: 240px;
+        border-radius: 20px; color: white;
+        font-family: 'Inter', sans-serif;
+        background-size: cover; overflow: hidden;
+        display: flex; flex-direction: column; justify-content: space-between;
+        position: relative; box-shadow: 0 15px 35px rgba(0,0,0,0.3); padding: 0;
+    }
+
+    .credit-card::before {
+        content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+        background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.5) 100%);
+        pointer-events: none; z-index: 0;
+    }
+
+    .card-content-wrapper { padding: 22px 25px 0 25px; flex-grow: 1; display: flex; flex-direction: column; z-index: 1; }
+    .card-header-row { display: flex; justify-content: space-between; align-items: flex-start; }
+    .bank-group { display: flex; align-items: center; gap: 15px; }
+
+    .bank-logo-box {
+        width: 45px; height: 45px;
+        background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15);
+        border-radius: 12px; display: flex; align-items: center; justify-content: center;
+        backdrop-filter: blur(4px); padding: 8px;
+    }
+    /* Logo Image Style */
+    .bank-logo-img { width: 100%; height: 100%; object-fit: contain; }
+
+    /* Fallback Icon Style (for 'Other' banks) */
+    .bank-fallback-icon { font-size: 22px; color: rgba(255,255,255,0.9); }
+
+    .bank-text-col { display: flex; flex-direction: column; justify-content: center; }
+    .bank-name { font-size: 1rem; font-weight: 700; color: #fff; line-height: 1.1; margin-bottom: 2px; }
+    .card-type-text { font-size: 0.7rem; color: rgba(255,255,255,0.65); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .card-tech-group { display: flex; align-items: center; gap: 10px; }
+    .chip-svg { width: 42px; height: 30px; border-radius: 5px; }
+    .contactless-icon { font-size: 24px; color: rgba(255,255,255,0.9); transform: rotate(90deg); }
+
+    .card-number-row { display: flex; align-items: center; gap: 15px; margin-top: 20px; }
+    .dots-group { font-size: 2rem; line-height: 0; position: relative; top: -4px; letter-spacing: 2px; display: flex; gap: 10px; }
+    .last-digits { font-family: 'Share Tech Mono', monospace; font-size: 1.6rem; letter-spacing: 2px; }
+
+    .card-holder-row { margin-top: auto; padding-bottom: 18px; }
+    .holder-label { font-size: 0.55rem; text-transform: uppercase; color: rgba(255,255,255,0.6); font-weight: 700; letter-spacing: 0.5px; display: block; margin-bottom: 2px; }
+    .holder-name { font-size: 0.95rem; text-transform: uppercase; font-weight: 600; letter-spacing: 1px; }
+
+    .card-footer-bar {
+        background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(10px);
+        padding: 12px 25px; display: flex; justify-content: space-between; align-items: center;
+        border-top: 1px solid rgba(255,255,255,0.1); z-index: 1; margin-top: auto;
+    }
+
+    .dates-group { display: flex; gap: 30px; }
+    .date-col { display: flex; flex-direction: column; }
+    .date-label { font-size: 0.55rem; text-transform: uppercase; color: rgba(255,255,255,0.6); font-weight: 700; letter-spacing: 0.5px; margin-bottom: 2px; }
+    .date-val { font-size: 0.95rem; font-weight: 700; color: #fff; }
+
+    .days-left-btn {
+        border: 1px solid #FFD700; color: #FFD700; background: rgba(255, 215, 0, 0.1);
+        padding: 6px 12px; border-radius: 6px; font-size: 0.7rem; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;
+    }
+    .paid-btn {
+        border: 1px solid #2ecc71; color: #2ecc71; background: rgba(46, 204, 113, 0.15);
+        padding: 6px 12px; border-radius: 6px; font-size: 0.7rem; font-weight: 700;
+    }
+
+    /* --- MODAL STYLES --- */
+    .custom-modal-content { border-radius: 24px; border: none; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+    .modal-header { border-bottom: none; padding: 30px 30px 10px; }
+    .modal-title { font-weight: 800; font-size: 1.5rem; color: #111827; }
+    .btn-close-custom { background-color: #f3f4f6; border-radius: 50%; padding: 12px; transition: 0.2s; }
+    .btn-close-custom:hover { background-color: #e5e7eb; }
+
+    .modal-body { padding: 0 30px 30px; }
+
+    .modal-card-preview {
+        background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 18px;
+        padding: 20px; margin-bottom: 20px; display: flex; align-items: center; gap: 20px;
+    }
+    .mini-card-icon { font-size: 28px; color: #3b82f6; }
+    .mini-card-details h5 { margin: 0; font-size: 1.15rem; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
+    .mini-card-details p { margin: 0; color: #64748b; font-size: 0.95rem; font-weight: 500; }
+
+    .action-list { display: flex; flex-direction: column; gap: 15px; }
+
+    .action-item {
+        display: flex; align-items: center; gap: 20px; padding: 18px;
+        border: 1px solid #e2e8f0; border-radius: 18px;
+        transition: all 0.2s ease; text-decoration: none; color: inherit;
+        cursor: pointer; background: white; width: 100%;
+    }
+    .action-item:hover { background-color: #f8fafc; border-color: #cbd5e1; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+
+    .icon-box {
+        width: 50px; height: 50px; border-radius: 14px;
+        display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0;
+    }
+    .icon-paid { background-color: #dcfce7; color: #16a34a; }
+    .icon-unpaid { background-color: #fef9c3; color: #ca8a04; }
+    .icon-edit { background-color: #dbeafe; color: #2563eb; }
+    .icon-delete { background-color: #fee2e2; color: #dc2626; }
+
+    .action-text h6 { margin: 0; font-weight: 700; font-size: 1.05rem; color: #1e293b; margin-bottom: 3px; }
+    .action-text span { font-size: 0.9rem; color: #64748b; font-weight: 500; }
+
+</style>
+
+<div class="row mb-5">
+    <div class="col-6 col-md-3 mb-3 mb-md-0">
+        <div class="stats-card">
+            <div class="stats-icon-box bg-light-blue"><i class="fa-regular fa-credit-card"></i></div>
+            <div><div class="stats-value"><%= stats.total %></div><div class="stats-label">Total Cards</div></div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3 mb-3 mb-md-0">
+        <div class="stats-card">
+            <div class="stats-icon-box bg-light-red"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            <div><div class="stats-value"><%= stats.dueSoon %></div><div class="stats-label">Due in 3 Days</div></div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stats-card">
+            <div class="stats-icon-box bg-light-orange"><i class="fa-regular fa-clipboard"></i></div>
+            <div><div class="stats-value"><%= stats.billingSoon %></div><div class="stats-label">Billing Soon</div></div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stats-card">
+            <div class="stats-icon-box bg-light-green"><i class="fa-regular fa-square-check"></i></div>
+            <div><div class="stats-value"><%= stats.paid %></div><div class="stats-label">Paid This Month</div></div>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Your Cards</h2>
+    <a href="/add-card" class="btn btn-success">+ Add New Card</a>
+</div>
+
+<div class="row">
+    <% if(cards.length > 0) { %>
+        <% cards.forEach(card => {
+            let safeBankName = card.bankName ? card.bankName.trim() : 'Bank';
+            let bankLogo = card.isOtherBank ? 'default.png' : safeBankName.toLowerCase().replace(/ /g, '-') + '.png';
+            let safeNetwork = card.cardNetwork ? card.cardNetwork.trim() : 'Credit Card';
+            let bgColor = card.cardColor || '#1a1f36';
+            let gradient = `linear-gradient(135deg, ${bgColor}, #000)`;
+            let billDayStr = getDayWithSuffix(card.billingDate);
+            let dueDayStr = getDayWithSuffix(card.dueDate);
+            let daysLeft = calculateDaysLeft(card.dueDate);
+            let daysLeftText = daysLeft === 0 ? "Due Today" : `${daysLeft} DAYS LEFT`;
+        %>
+
+        <div class="col-lg-4 col-md-6 credit-card-container"
+             onclick="openActionModal(this)"
+             data-id="<%= card._id %>"
+             data-bank="<%= safeBankName %>"
+             data-last4="<%= card.lastFourDigits %>"
+             data-due="<%= dueDayStr %>"
+             data-paid="<%= card.isPaidForThisMonth %>">
+
+            <div class="credit-card" style="background: <%= gradient %>;">
+                <div class="card-content-wrapper">
+                    <div class="card-header-row">
+                        <div class="bank-group">
+                            <div class="bank-logo-box">
+                                <% if(card.isOtherBank) { %>
+                                    <i class="fa-solid fa-building-columns bank-fallback-icon"></i>
+                                <% } else { %>
+                                    <img src="/assets/logos/<%= bankLogo %>" class="bank-logo-img"
+                                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                    <i class="fa-solid fa-building-columns bank-fallback-icon" style="display: none;"></i>
+                                <% } %>
+                            </div>
+                            <div class="bank-text-col">
+                                <span class="bank-name"><%= safeBankName %></span>
+                                <span class="card-type-text"><%= safeNetwork %></span>
+                            </div>
+                        </div>
+                        <div class="card-tech-group">
+                            <svg class="chip-svg" viewBox="0 0 50 35" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect width="50" height="35" rx="5" fill="url(#paint_chip_<%= card._id %>)"/>
+                                <path d="M0 12H15C17.76 12 20 14.23 20 17V18C20 20.76 17.76 23 15 23H0" stroke="black" stroke-opacity="0.2"/>
+                                <path d="M50 12H35C32.23 12 30 14.23 30 17V18C30 20.76 32.23 23 35 23H50" stroke="black" stroke-opacity="0.2"/>
+                                <path d="M12 0V35 M38 0V35 M25 6V29" stroke="black" stroke-opacity="0.2"/>
+                                <defs>
+                                    <linearGradient id="paint_chip_<%= card._id %>" x1="0" y1="0" x2="50" y2="35" gradientUnits="userSpaceOnUse">
+                                        <stop stop-color="#FFD700"/>
+                                        <stop offset="1" stop-color="#B8860B"/>
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                            <i class="fa-solid fa-wifi contactless-icon"></i>
+                        </div>
+                    </div>
+                    <div class="card-number-row">
+                        <div class="dots-group"><span>••••</span><span>••••</span><span>••••</span></div>
+                        <span class="last-digits"><%= card.lastFourDigits %></span>
+                    </div>
+                    <div class="card-holder-row">
+                        <span class="holder-label">CARD HOLDER</span>
+                        <span class="holder-name"><%= card.holderName ? card.holderName.toUpperCase() : 'USER' %></span>
+                    </div>
+                </div>
+                <div class="card-footer-bar">
+                    <div class="dates-group">
+                        <div class="date-col"><span class="date-label">BILL DATE</span><span class="date-val"><%= billDayStr %></span></div>
+                        <div class="date-col"><span class="date-label">DUE DATE</span><span class="date-val"><%= dueDayStr %></span></div>
+                    </div>
+                    <% if(card.isPaidForThisMonth) { %>
+                        <div class="paid-btn">✓ PAID</div>
+                    <% } else { %>
+                        <div class="days-left-btn"><%= daysLeftText %></div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+        <% }) %>
+    <% } else { %>
+        <div class="col-12 text-center mt-5"><h4 class="text-muted">No cards found.</h4></div>
+    <% } %>
+</div>
+
+<div class="modal fade" id="cardActionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content custom-modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Card Actions</h5>
+                <button type="button" class="btn-close btn-close-custom" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="modal-card-preview">
+                    <div class="mini-card-icon">💳</div>
+                    <div class="mini-card-details">
+                        <h5 id="modalBankName">Bank Name</h5>
+                        <p>Ending in <span id="modalLast4">0000</span> • Due: <span id="modalDueDate">12th</span></p>
+                    </div>
+                </div>
+
+                <div class="action-list">
+
+                    <div id="paymentActionBtn" class="action-item">
+                        <div id="paymentActionIcon" class="icon-box icon-paid">💰</div>
+                        <div class="action-text">
+                            <h6 id="paymentActionTitle">Mark as Paid</h6>
+                            <span id="paymentActionDesc">Confirm payment for this month</span>
+                        </div>
+                    </div>
+
+                    <a href="#" id="editCardLink" class="action-item">
+                        <div class="icon-box icon-edit">✏️</div>
+                        <div class="action-text">
+                            <h6>Edit Card</h6>
+                            <span>Modify card details</span>
+                        </div>
+                    </a>
+
+                    <div class="action-item" onclick="openDeleteConfirmation()">
+                        <div class="icon-box icon-delete">🗑️</div>
+                        <div class="action-text">
+                            <h6>Delete Card</h6>
+                            <span>Remove this card permanently</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="deleteConfirmationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content custom-modal-content border-danger">
+            <div class="modal-body text-center p-4">
+                <div class="mb-3" style="font-size: 3rem;">⚠️</div>
+                <h4 class="mb-2">Are you sure?</h4>
+                <p class="text-muted mb-4">Do you really want to delete this card? This process cannot be undone.</p>
+                <form id="finalDeleteForm" action="" method="POST">
+                    <div class="d-flex justify-content-center gap-3">
+                        <button type="button" class="btn btn-light px-4 py-2" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-danger px-4 py-2">Yes, Delete</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%
+function getDayWithSuffix(day) {
+    let suffix = "th";
+    if (day % 10 == 1 && day != 11) suffix = "st";
+    else if (day % 10 == 2 && day != 12) suffix = "nd";
+    else if (day % 10 == 3 && day != 13) suffix = "rd";
+    return `${day}${suffix}`;
+}
+
+function calculateDaysLeft(dueDay) {
+    const today = new Date();
+    const currentDay = today.getDate();
+    if (dueDay >= currentDay) {
+        return dueDay - currentDay;
+    } else {
+        const daysInCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+        return (daysInCurrentMonth - currentDay) + dueDay;
+    }
+}
+%>
+
+<script>
+    let currentCardId = null;
+    let actionModal = null;
+    let deleteModal = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const actionEl = document.getElementById('cardActionModal');
+        const deleteEl = document.getElementById('deleteConfirmationModal');
+        if(actionEl) actionModal = new bootstrap.Modal(actionEl);
+        if(deleteEl) deleteModal = new bootstrap.Modal(deleteEl);
+    });
+
+    function openActionModal(element) {
+        if(!actionModal) return;
+        currentCardId = element.getAttribute('data-id');
+        const bank = element.getAttribute('data-bank');
+        const last4 = element.getAttribute('data-last4');
+        const dueDate = element.getAttribute('data-due');
+        const isPaid = element.getAttribute('data-paid') === 'true';
+
+        document.getElementById('modalBankName').innerText = bank;
+        document.getElementById('modalLast4').innerText = last4;
+        document.getElementById('modalDueDate').innerText = dueDate;
+
+        const editLink = document.getElementById('editCardLink');
+        if(editLink) editLink.href = `/edit-card/${currentCardId}`;
+        const deleteForm = document.getElementById('finalDeleteForm');
+        if(deleteForm) deleteForm.action = `/delete-card/${currentCardId}`;
+
+        configurePaymentButton(isPaid);
+        actionModal.show();
+    }
+
+    function configurePaymentButton(isPaid) {
+        const btn = document.getElementById('paymentActionBtn');
+        const icon = document.getElementById('paymentActionIcon');
+        const title = document.getElementById('paymentActionTitle');
+        const desc = document.getElementById('paymentActionDesc');
+        icon.className = 'icon-box';
+
+        if (isPaid) {
+            icon.classList.add('icon-unpaid');
+            icon.innerText = '❌';
+            title.innerText = 'Mark as Unpaid';
+            desc.innerText = 'Revert payment status';
+            btn.onclick = () => submitPaymentStatus(false);
+        } else {
+            icon.classList.add('icon-paid');
+            icon.innerText = '💰';
+            title.innerText = 'Mark as Paid';
+            desc.innerText = 'Confirm payment for this month';
+            btn.onclick = () => submitPaymentStatus(true);
+        }
+    }
+
+    async function submitPaymentStatus(setPaidTo) {
+        if(!currentCardId) return;
+        const endpoint = setPaidTo ? `/mark-paid/${currentCardId}` : `/mark-unpaid/${currentCardId}`;
+        try {
+            const res = await fetch(endpoint, { method: 'POST' });
+            if (!res.ok) throw new Error(`Server Error: ${res.status}`);
+            const data = await res.json();
+            if(data.success) window.location.reload();
+            else alert('Error: ' + data.error);
+        } catch(e) {
+            console.error(e);
+            alert('Action Failed: ' + e.message);
+        }
+    }
+
+    function openDeleteConfirmation() {
+        if(actionModal) actionModal.hide();
+        setTimeout(() => {
+            if(deleteModal) deleteModal.show();
+        }, 200);
+    }
+</script>
+
+<%- include('footer') %>
