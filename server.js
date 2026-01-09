@@ -42,8 +42,7 @@ const BANK_LIST = [
     "Canara Bank", "Citi Bank", "FederalBank", "HDFC Bank", "HSBS Bank", "ICICI Bank",
     "IDFC Bank", "IndusInd Bank", "Kotak Bank", "PNB bank", "RBI Bank", "SBI Bank",
     "SBM Bank", "Slice Bank", "Standard Chartered Bank", "Union Bank",
-    "Unity Small Finance Bank", "Utkarsha Small Finance Bank", "Yes Bank",
-    "Dinersclub", "Master Card", "Rupay", "Visa"
+    "Unity Small Finance Bank", "Utkarsha Small Finance Bank", "Yes Bank"
 ];
 
 // --- ROUTES ---
