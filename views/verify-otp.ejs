@@ -1,0 +1,133 @@
+<%- include('header') %>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+    /* --- PAGE LAYOUT --- */
+    body {
+        background-color: #f3f4f6;
+        font-family: 'Inter', sans-serif;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Centering Wrapper */
+    .auth-wrapper {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+
+    .auth-container {
+        width: 100%;
+        max-width: 420px;
+    }
+
+    /* --- CARD STYLES --- */
+    .card-custom {
+        background: white;
+        border: none;
+        border-radius: 24px;
+        padding: 40px 30px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+        text-align: center;
+    }
+
+    /* Icon Box (Indigo for Verification) */
+    .icon-box {
+        width: 60px; height: 60px;
+        background: #eef2ff; /* Light Indigo */
+        color: #4f46e5;      /* Indigo Icon */
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.5rem;
+        margin: 0 auto 20px;
+        box-shadow: 0 4px 10px rgba(79, 70, 229, 0.2);
+    }
+
+    .title-text { font-weight: 800; color: #111827; margin-bottom: 8px; }
+    .subtitle-text { color: #6b7280; font-size: 0.9rem; margin-bottom: 30px; }
+
+    /* --- OTP INPUT --- */
+    .form-control-otp {
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+        background-color: #f9fafb;
+        font-size: 1.5rem;
+        font-weight: 700;
+        text-align: center;
+        letter-spacing: 8px; /* Spaced out for code look */
+        padding: 12px;
+        transition: all 0.2s ease;
+    }
+    .form-control-otp:focus {
+        background-color: #fff;
+        border-color: #4f46e5;
+        box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+        outline: none;
+    }
+    .form-control-otp::placeholder {
+        letter-spacing: 2px;
+        color: #d1d5db;
+        font-weight: 400;
+    }
+
+    .form-label { color: #4b5563; font-weight: 500; font-size: 0.9rem; margin-bottom: 10px; display: block; }
+
+    /* --- BUTTONS --- */
+    .btn-auth {
+        background-color: #111827;
+        color: white;
+        border-radius: 12px;
+        padding: 14px;
+        font-weight: 600;
+        font-size: 1rem;
+        transition: 0.3s;
+        border: none;
+    }
+    .btn-auth:hover {
+        background-color: #000;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+
+    /* Links */
+    .resend-link { color: #4f46e5; text-decoration: none; font-weight: 600; }
+    .resend-link:hover { text-decoration: underline; }
+</style>
+
+<div class="auth-wrapper">
+    <div class="auth-container">
+
+        <div class="card card-custom">
+
+            <div class="icon-box">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+
+            <h3 class="title-text">Verify Identity</h3>
+            <p class="subtitle-text">Enter the 6-digit code sent to your email.</p>
+
+            <form action="/verify-otp" method="POST">
+
+                <div class="mb-4">
+                    <input type="text" name="otp" class="form-control form-control-otp" placeholder="XXXXXX" maxlength="6" required autofocus>
+                </div>
+
+                <button type="submit" class="btn btn-auth w-100">Verify Code</button>
+            </form>
+
+            <div class="mt-4 text-muted small">
+                Didn't receive code? <a href="/forgot-password" class="resend-link">Resend</a>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<%- include('footer') %>
