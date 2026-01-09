@@ -14,6 +14,12 @@ const Card = require('./models/Card');
 const app = express();
 
 // --- CONFIGURATION ---
+
+// Helper: Check if Env Vars exist (Debug Helper for Render)
+if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.warn("⚠️ WARNING: EMAIL_USER or EMAIL_PASS is missing from Environment Variables!");
+}
+
 mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/cardReminder')
     .then(() => console.log('✅ MongoDB Connected'))
     .catch(err => console.log('❌ DB Error:', err));
@@ -269,32 +275,57 @@ app.post('/mark-unpaid/:id', async (req, res) => {
     }
 });
 
-// Password Reset
+// --- PASSWORD RESET & NODEMAILER CONFIGURATION ---
+
+// 1. UPDATED TRANSPORTER: Explicit Host & Port 465 (SSL)
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+    service: 'gmail', // You can keep this or remove it if host/port is set
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true, // Use SSL
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
 });
 
 app.get('/forgot-password', (req, res) => res.render('forgot-password'));
+
+// 2. UPDATED ROUTE: Async/Await + Error Logging for Debugging on Render
 app.post('/forgot-password', async (req, res) => {
     const { email } = req.body;
-    const user = await User.findOne({ email });
-    if (!user) {
-        req.flash('error_msg', 'No account found.');
-        return res.redirect('/forgot-password');
+
+    try {
+        const user = await User.findOne({ email });
+        if (!user) {
+            req.flash('error_msg', 'No account found.');
+            return res.redirect('/forgot-password');
+        }
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        user.resetOTP = otp;
+        user.resetOTPExpires = Date.now() + 600000; // 10 minutes
+        await user.save();
+
+        req.session.resetEmail = email;
+
+        // Async sending: allows catching errors properly
+        await transporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: 'Reset Password OTP',
+            text: `Your OTP is ${otp}. It is valid for 10 minutes.`
+        });
+
+        console.log(`✅ Email sent successfully to ${email}`);
+        req.flash('success_msg', 'OTP sent. Check your email.');
+        res.redirect('/verify-otp');
+
+    } catch (err) {
+        console.error("❌ EMAIL ERROR:", err); // Check Render logs for this!
+        req.flash('error_msg', 'Error sending email. Check server logs.');
+        res.redirect('/forgot-password');
     }
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    user.resetOTP = otp;
-    user.resetOTPExpires = Date.now() + 600000;
-    await user.save();
-    req.session.resetEmail = email;
-    transporter.sendMail({
-        from: process.env.EMAIL_USER, to: email,
-        subject: 'Reset Password OTP', text: `Your OTP is ${otp}.`
-    }, (err) => {
-        if(err) req.flash('error_msg', 'Error sending email.');
-        else { req.flash('success_msg', 'OTP sent.'); res.redirect('/verify-otp'); }
-    });
 });
 
 app.get('/verify-otp', (req, res) => { if(!req.session.resetEmail) return res.redirect('/forgot-password'); res.render('verify-otp'); });
@@ -321,15 +352,19 @@ app.post('/reset-password', async (req, res) => {
 cron.schedule('0 9,14,20 * * *', async () => {
     const today = new Date().getDate();
     const cards = await Card.find().populate('user');
-    cards.forEach(card => {
+    cards.forEach(async (card) => { // Async to handle errors
         let diff = card.dueDate - today;
         if(diff < 0) diff += 30;
         if (diff >= 0 && diff <= 3) {
-            transporter.sendMail({
-                from: process.env.EMAIL_USER, to: card.user.email,
-                subject: `⚠️ Bill Due: ${card.bankName}`,
-                html: `<p>Pay your ${card.bankName} bill (Ending: ${card.lastFourDigits}) within ${diff} days.</p>`
-            });
+            try {
+                await transporter.sendMail({
+                    from: process.env.EMAIL_USER, to: card.user.email,
+                    subject: `⚠️ Bill Due: ${card.bankName}`,
+                    html: `<p>Pay your ${card.bankName} bill (Ending: ${card.lastFourDigits}) within ${diff} days.</p>`
+                });
+            } catch (cronErr) {
+                console.error(`❌ Cron Email Fail for ${card.user.email}:`, cronErr.message);
+            }
         }
     });
 });
