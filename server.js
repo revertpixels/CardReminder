@@ -43,21 +43,8 @@ const BANK_LIST = [
     "IDFC Bank", "IndusInd Bank", "Kotak Bank", "PNB bank", "RBI Bank", "SBI Bank",
     "SBM Bank", "Slice Bank", "Standard Chartered Bank", "Union Bank",
     "Unity Small Finance Bank", "Utkarsha Small Finance Bank", "Yes Bank",
+    "Dinersclub", "Master Card", "Rupay", "Visa"
 ];
-
-// --- HELPER FUNCTION: PASSWORD VALIDATION ---
-function validatePassword(password) {
-    const minLength = 8;
-    const hasUpperCase = /[A-Z]/.test(password);
-    const hasLowerCase = /[a-z]/.test(password);
-    const hasNumber = /[0-9]/.test(password);
-
-    if (password.length < minLength) return "Password must be at least 8 characters.";
-    if (!hasUpperCase) return "Password must contain at least one uppercase letter.";
-    if (!hasLowerCase) return "Password must contain at least one lowercase letter.";
-    if (!hasNumber) return "Password must contain at least one number.";
-    return null; // No error
-}
 
 // --- ROUTES ---
 
@@ -67,14 +54,6 @@ app.get('/register', (req, res) => res.render('register'));
 
 app.post('/register', async (req, res) => {
     const { name, email, password } = req.body;
-
-    // 1. Check Password Strength
-    const passwordError = validatePassword(password);
-    if (passwordError) {
-        req.flash('error_msg', passwordError);
-        return res.redirect('/register');
-    }
-
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
         await User.create({ name, email, password: hashedPassword });
@@ -277,27 +256,46 @@ const transporter = nodemailer.createTransport({
 });
 
 app.get('/forgot-password', (req, res) => res.render('forgot-password'));
+
 app.post('/forgot-password', async (req, res) => {
     const { email } = req.body;
     const user = await User.findOne({ email });
+
     if (!user) {
-        req.flash('error_msg', 'No account found.');
+        req.flash('error_msg', 'No account found with that email.');
         return res.redirect('/forgot-password');
     }
+
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     user.resetOTP = otp;
-    user.resetOTPExpires = Date.now() + 600000;
+    user.resetOTPExpires = Date.now() + 600000; // 10 Minutes
     await user.save();
+
     req.session.resetEmail = email;
+    req.flash('success_msg', 'OTP is being sent to your email.');
+    res.redirect('/verify-otp');
+
+    // Background Email Send (Fast)
+    const emailHTML = `
+    <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; background: #f3f4f6; padding: 20px; border-radius: 10px;">
+        <div style="background: #ffffff; padding: 40px; border-radius: 10px; text-align: center;">
+            <div style="display: inline-block; background: #4f46e5; padding: 12px; border-radius: 50%; margin-bottom: 20px;">
+                <img src="https://img.icons8.com/ios-filled/50/ffffff/lock.png" style="width: 24px;">
+            </div>
+            <h2 style="color: #1f2937; margin-bottom: 10px;">Password Reset Request</h2>
+            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; display: inline-block; margin: 30px 0;">
+                <span style="font-size: 32px; font-weight: 800; letter-spacing: 5px; color: #4f46e5;">${otp}</span>
+            </div>
+            <p style="color: #6b7280;">Valid for 10 minutes. If you didn't request this, ignore it.</p>
+        </div>
+    </div>`;
+
     transporter.sendMail({
         from: `"CardGuard Security" <${process.env.EMAIL_USER}>`,
         to: email,
-        subject: 'Reset Password OTP',
-        text: `Your OTP is ${otp}.`
-    }, (err) => {
-        if(err) req.flash('error_msg', 'Error sending email.');
-        else { req.flash('success_msg', 'OTP sent.'); res.redirect('/verify-otp'); }
-    });
+        subject: '🔐 Your Verification Code',
+        html: emailHTML
+    }).catch(err => console.error("Email Error:", err));
 });
 
 app.get('/verify-otp', (req, res) => { if(!req.session.resetEmail) return res.redirect('/forgot-password'); res.render('verify-otp'); });
@@ -312,16 +310,8 @@ app.get('/reset-password', (req, res) => { if(!req.session.isOtpVerified) return
 app.post('/reset-password', async (req, res) => {
     const { password, confirmPassword } = req.body;
 
-    // 1. Check Passwords Match
     if(password !== confirmPassword) {
         req.flash('error_msg', 'Passwords do not match.');
-        return res.redirect('/reset-password');
-    }
-
-    // 2. Check Password Strength
-    const passwordError = validatePassword(password);
-    if (passwordError) {
-        req.flash('error_msg', passwordError);
         return res.redirect('/reset-password');
     }
 
