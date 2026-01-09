@@ -4,18 +4,24 @@
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
+    /* --- GLOBAL DASHBOARD TEXT --- */
+    h2 { color: var(--text-main); font-weight: 800; }
+    h4.text-muted { color: #6b7280 !important; }
+
     /* --- STATS SUMMARY ROW STYLES --- */
     .stats-card {
-        background: white;
+        background: #ffffff; /* Fixed White */
         border-radius: 16px;
         padding: 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        box-shadow: var(--shadow-soft);
         display: flex;
         flex-direction: column;
         justify-content: space-between;
         height: 100%;
-        border: 1px solid rgba(0,0,0,0.03);
+        border: 1px solid var(--border-color);
+        transition: transform 0.2s ease;
     }
+    .stats-card:hover { transform: translateY(-2px); }
 
     .stats-icon-box {
         width: 45px; height: 45px;
@@ -29,8 +35,16 @@
     .bg-light-orange { background-color: #fff7ed; color: #f97316; }
     .bg-light-green { background-color: #f0fdf4; color: #22c55e; }
 
-    .stats-value { font-size: 2rem; font-weight: 700; color: #111827; line-height: 1; margin-bottom: 5px; }
-    .stats-label { font-size: 0.85rem; color: #6b7280; font-weight: 500; }
+    .stats-value {
+        font-size: 2rem; font-weight: 700;
+        color: var(--text-main);
+        line-height: 1; margin-bottom: 5px;
+    }
+    .stats-label {
+        font-size: 0.85rem;
+        color: #6b7280; /* Muted Grey */
+        font-weight: 500;
+    }
 
     /* --- CARD STYLES --- */
     .credit-card-container {
@@ -64,10 +78,7 @@
         border-radius: 12px; display: flex; align-items: center; justify-content: center;
         backdrop-filter: blur(4px); padding: 8px;
     }
-    /* Logo Image Style */
     .bank-logo-img { width: 100%; height: 100%; object-fit: contain; }
-
-    /* Fallback Icon Style (for 'Other' banks) */
     .bank-fallback-icon { font-size: 22px; color: rgba(255,255,255,0.9); }
 
     .bank-text-col { display: flex; flex-direction: column; justify-content: center; }
@@ -108,31 +119,50 @@
     }
 
     /* --- MODAL STYLES --- */
-    .custom-modal-content { border-radius: 24px; border: none; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+    .custom-modal-content {
+        border-radius: 24px;
+        border: none;
+        box-shadow: var(--shadow-soft);
+        background-color: #ffffff; /* Fixed White */
+    }
     .modal-header { border-bottom: none; padding: 30px 30px 10px; }
-    .modal-title { font-weight: 800; font-size: 1.5rem; color: #111827; }
-    .btn-close-custom { background-color: #f3f4f6; border-radius: 50%; padding: 12px; transition: 0.2s; }
-    .btn-close-custom:hover { background-color: #e5e7eb; }
+    .modal-title { font-weight: 800; font-size: 1.5rem; color: var(--text-main); }
+
+    .btn-close-custom {
+        background-color: #f3f4f6;
+        border-radius: 50%; padding: 12px; transition: 0.2s;
+    }
+    .btn-close-custom:hover { opacity: 0.8; }
 
     .modal-body { padding: 0 30px 30px; }
 
     .modal-card-preview {
-        background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 18px;
+        background: #f8fafc;
+        border: 1px solid var(--border-color);
+        border-radius: 18px;
         padding: 20px; margin-bottom: 20px; display: flex; align-items: center; gap: 20px;
     }
     .mini-card-icon { font-size: 28px; color: #3b82f6; }
-    .mini-card-details h5 { margin: 0; font-size: 1.15rem; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
-    .mini-card-details p { margin: 0; color: #64748b; font-size: 0.95rem; font-weight: 500; }
+    .mini-card-details h5 { margin: 0; font-size: 1.15rem; font-weight: 700; color: var(--text-main); margin-bottom: 4px; }
+    .mini-card-details p { margin: 0; color: #6b7280; font-size: 0.95rem; font-weight: 500; }
 
     .action-list { display: flex; flex-direction: column; gap: 15px; }
 
     .action-item {
         display: flex; align-items: center; gap: 20px; padding: 18px;
-        border: 1px solid #e2e8f0; border-radius: 18px;
+        border: 1px solid var(--border-color);
+        border-radius: 18px;
         transition: all 0.2s ease; text-decoration: none; color: inherit;
-        cursor: pointer; background: white; width: 100%;
+        cursor: pointer;
+        background: #ffffff;
+        width: 100%;
     }
-    .action-item:hover { background-color: #f8fafc; border-color: #cbd5e1; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+    .action-item:hover {
+        background-color: #f8fafc;
+        border-color: #d1d5db;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
 
     .icon-box {
         width: 50px; height: 50px; border-radius: 14px;
@@ -143,8 +173,8 @@
     .icon-edit { background-color: #dbeafe; color: #2563eb; }
     .icon-delete { background-color: #fee2e2; color: #dc2626; }
 
-    .action-text h6 { margin: 0; font-weight: 700; font-size: 1.05rem; color: #1e293b; margin-bottom: 3px; }
-    .action-text span { font-size: 0.9rem; color: #64748b; font-weight: 500; }
+    .action-text h6 { margin: 0; font-weight: 700; font-size: 1.05rem; color: var(--text-main); margin-bottom: 3px; }
+    .action-text span { font-size: 0.9rem; color: #6b7280; font-weight: 500; }
 
 </style>
 
@@ -318,7 +348,7 @@
         <div class="modal-content custom-modal-content border-danger">
             <div class="modal-body text-center p-4">
                 <div class="mb-3" style="font-size: 3rem;">⚠️</div>
-                <h4 class="mb-2">Are you sure?</h4>
+                <h4 class="mb-2" style="color: var(--text-main);">Are you sure?</h4>
                 <p class="text-muted mb-4">Do you really want to delete this card? This process cannot be undone.</p>
                 <form id="finalDeleteForm" action="" method="POST">
                     <div class="d-flex justify-content-center gap-3">

@@ -43,7 +43,6 @@ const BANK_LIST = [
     "IDFC Bank", "IndusInd Bank", "Kotak Bank", "PNB bank", "RBI Bank", "SBI Bank",
     "SBM Bank", "Slice Bank", "Standard Chartered Bank", "Union Bank",
     "Unity Small Finance Bank", "Utkarsha Small Finance Bank", "Yes Bank",
-    "Dinersclub", "Master Card", "Rupay", "Visa"
 ];
 
 // --- ROUTES ---

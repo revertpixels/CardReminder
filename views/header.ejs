@@ -3,45 +3,129 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CardGuard - Card Reminder System</title>
-    <link rel="icon" href="/assets/logos/card-logo.png">
+    <title>CardGuard</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
     <style>
-        body { background-color: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .navbar { box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .card-custom {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            border: none;
-            border-radius: 15px;
-            transition: transform 0.2s;
+        /* --- GLOBAL VARIABLES --- */
+        :root {
+            --primary-color: #4f46e5;
+            --bg-body: #f3f4f6;
+            --bg-nav: #ffffff;
+            --text-main: #111827;
+            --border-color: #e5e7eb;
+            --shadow-soft: 0 4px 20px rgba(0,0,0,0.05);
         }
-        .card-custom:hover { transform: translateY(-5px); }
-        .alert { border-radius: 10px; }
+
+        body {
+            background-color: var(--bg-body);
+            font-family: 'Inter', sans-serif;
+            color: var(--text-main);
+        }
+
+        /* Navbar Styling */
+        .navbar-custom {
+            background-color: var(--bg-nav);
+            box-shadow: var(--shadow-soft);
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 40px;
+        }
+
+        .navbar-brand {
+            font-weight: 800;
+            font-size: 1.4rem;
+            color: var(--text-main) !important;
+            display: flex; align-items: center; gap: 12px; letter-spacing: -0.5px;
+        }
+
+        .brand-icon {
+            width: 42px; height: 42px;
+            background: linear-gradient(135deg, #4f46e5, #818cf8);
+            color: white; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.25);
+        }
+
+        /* User Details (No Background Box) */
+        .user-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-main);
+        }
+
+        /* Logout Button */
+        .btn-logout {
+            width: 38px; height: 38px; border-radius: 50%;
+            background: #fee2e2; color: #ef4444; border: none;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s ease; text-decoration: none;
+            font-size: 1rem;
+        }
+        .btn-logout:hover {
+            background: #ef4444; color: white; transform: rotate(90deg);
+            box-shadow: 0 2px 10px rgba(239, 68, 68, 0.3);
+        }
+
+        /* Alerts */
+        .alert-custom {
+            border-radius: 14px; border: none;
+            box-shadow: var(--shadow-soft); margin-top: 25px;
+            display: flex; align-items: center; padding: 16px 20px; font-weight: 500;
+        }
+        .alert-success { background-color: #f0fdf4; color: #166534; border-left: 5px solid #22c55e; }
+        .alert-danger { background-color: #fef2f2; color: #991b1b; border-left: 5px solid #ef4444; }
     </style>
 </head>
 <body>
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+
+<nav class="navbar navbar-expand-lg navbar-custom sticky-top">
     <div class="container">
-        <a class="navbar-brand fw-bold" href="/dashboard">💳 Card Reminders</a>
-        <% if(typeof user !== 'undefined' && user) { %>
-            <div class="d-flex align-items-center">
-                <span class="text-light me-3">Hi, <%= user.name %></span>
-                <a href="/logout" class="btn btn-light btn-sm rounded-pill px-3">Logout</a>
+        <a class="navbar-brand" href="/dashboard">
+            <div class="brand-icon">
+                <i class="fa-solid fa-wallet"></i>
             </div>
-        <% } %>
+            <span>CardGuard</span>
+        </a>
+
+        <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navContent">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse justify-content-end" id="navContent">
+            <% if(typeof user !== 'undefined' && user) { %>
+                <div class="user-group mt-3 mt-lg-0">
+                    <span class="user-name">Hi, <%= user.name.split(' ')[0] %></span>
+                    <a href="/logout" class="btn-logout" title="Logout">
+                        <i class="fa-solid fa-power-off"></i>
+                    </a>
+                </div>
+            <% } %>
+        </div>
     </div>
 </nav>
+
 <div class="container">
     <% if(success_msg && success_msg != ''){ %>
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <%= success_msg %>
+        <div class="alert alert-custom alert-success alert-dismissible fade show">
+            <i class="fa-solid fa-circle-check me-2 fs-5"></i>
+            <div><%= success_msg %></div>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     <% } %>
     <% if(error_msg && error_msg != ''){ %>
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <%= error_msg %>
+        <div class="alert alert-custom alert-danger alert-dismissible fade show">
+            <i class="fa-solid fa-circle-exclamation me-2 fs-5"></i>
+            <div><%= error_msg %></div>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
-</div>
 <% } %>
