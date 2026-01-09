@@ -45,6 +45,20 @@ const BANK_LIST = [
     "Unity Small Finance Bank", "Utkarsha Small Finance Bank", "Yes Bank",
 ];
 
+// --- HELPER FUNCTION: PASSWORD VALIDATION ---
+function validatePassword(password) {
+    const minLength = 8;
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+
+    if (password.length < minLength) return "Password must be at least 8 characters.";
+    if (!hasUpperCase) return "Password must contain at least one uppercase letter.";
+    if (!hasLowerCase) return "Password must contain at least one lowercase letter.";
+    if (!hasNumber) return "Password must contain at least one number.";
+    return null; // No error
+}
+
 // --- ROUTES ---
 
 // Auth
@@ -53,6 +67,14 @@ app.get('/register', (req, res) => res.render('register'));
 
 app.post('/register', async (req, res) => {
     const { name, email, password } = req.body;
+
+    // 1. Check Password Strength
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+        req.flash('error_msg', passwordError);
+        return res.redirect('/register');
+    }
+
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
         await User.create({ name, email, password: hashedPassword });
@@ -80,7 +102,7 @@ app.get('/logout', (req, res) => {
     res.redirect('/');
 });
 
-// --- DASHBOARD WITH STATS CALCULATION ---
+// Dashboard
 app.get('/dashboard', async (req, res) => {
     if (!req.session.user) return res.redirect('/');
     try {
@@ -88,25 +110,16 @@ app.get('/dashboard', async (req, res) => {
 
         // --- Calculate Stats ---
         const today = new Date().getDate();
-        let stats = {
-            total: cards.length,
-            dueSoon: 0,
-            billingSoon: 0,
-            paid: 0
-        };
+        let stats = { total: cards.length, dueSoon: 0, billingSoon: 0, paid: 0 };
 
         cards.forEach(card => {
-            // 1. Paid Count
             if (card.isPaidForThisMonth) {
                 stats.paid++;
             } else {
-                // 2. Due Soon (Next 3 days) - Only count if NOT paid
                 let diff = card.dueDate - today;
-                if (diff < 0) diff += 30; // approximate month wrap
+                if (diff < 0) diff += 30;
                 if (diff >= 0 && diff <= 3) stats.dueSoon++;
             }
-
-            // 3. Billing Soon (Next 3 days)
             let billDiff = card.billingDate - today;
             if (billDiff < 0) billDiff += 30;
             if (billDiff >= 0 && billDiff <= 3) stats.billingSoon++;
@@ -225,8 +238,6 @@ app.post('/edit-card/:id', async (req, res) => {
 });
 
 // --- CARD ACTIONS ---
-
-// Delete Card (Direct)
 app.post('/delete-card/:id', async (req, res) => {
     if (!req.session.user) return res.redirect('/');
     try {
@@ -234,99 +245,92 @@ app.post('/delete-card/:id', async (req, res) => {
         req.flash('success_msg', 'Card deleted successfully.');
         res.redirect('/dashboard');
     } catch(err) {
-        console.log(err);
         req.flash('error_msg', 'Error deleting card');
         res.redirect('/dashboard');
     }
 });
 
-// Mark Paid API
 app.post('/mark-paid/:id', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
     try {
-        await Card.findOneAndUpdate(
-            { _id: req.params.id, user: req.session.user._id },
-            { isPaidForThisMonth: true }
-        );
+        await Card.findOneAndUpdate({ _id: req.params.id, user: req.session.user._id }, { isPaidForThisMonth: true });
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
     }
 });
 
-// Mark Unpaid API
 app.post('/mark-unpaid/:id', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
     try {
-        await Card.findOneAndUpdate(
-            { _id: req.params.id, user: req.session.user._id },
-            { isPaidForThisMonth: false }
-        );
+        await Card.findOneAndUpdate({ _id: req.params.id, user: req.session.user._id }, { isPaidForThisMonth: false });
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
     }
 });
 
-// --- BREVO EMAIL CONFIGURATION (Cleaned) ---
+// Password Reset Flow
 const transporter = nodemailer.createTransport({
-    host: 'smtp-relay.brevo.com',
-    port: 2525,             // Port 2525 is crucial for Render
-    secure: false,          // False for port 2525
-    auth: {
-        user: process.env.EMAIL_USER, // This will load '9fae6c001...' from your .env
-        pass: process.env.EMAIL_PASS  // This will load 'xsmtpsib...' from your .env
-    },
-    tls: {
-        rejectUnauthorized: false
-    },
-    connectionTimeout: 10000
-});
-
-// --- SINGLE VERIFY BLOCK ---
-transporter.verify((error, success) => {
-    if (error) {
-        console.error("❌ SMTP Connection Error:", error.message);
-    } else {
-        console.log("✅ SMTP Server is Ready (Brevo/Port 2525)");
-    }
+    service: 'gmail',
+    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
 });
 
 app.get('/forgot-password', (req, res) => res.render('forgot-password'));
 app.post('/forgot-password', async (req, res) => {
     const { email } = req.body;
-
-    try {
-        const user = await User.findOne({ email });
-        if (!user) {
-            req.flash('error_msg', 'No account found.');
-            return res.redirect('/forgot-password');
-        }
-
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        user.resetOTP = otp;
-        user.resetOTPExpires = Date.now() + 600000; // 10 mins
-        await user.save();
-
-        req.session.resetEmail = email;
-
-        // Use AWAIT here to ensure email is sent before redirecting
-        await transporter.sendMail({
-            from: 'due.cardreminder@gmail.com', // <--- YOUR GMAIL ADDRESS (Makes it look professional)
-            to: email,
-            subject: 'Reset Password OTP',
-            text: `Your OTP is ${otp}.`
-        });
-
-        console.log("Email sent successfully to:", email); // Log for debugging on Render
-        req.flash('success_msg', 'OTP sent to your email.');
-        res.redirect('/verify-otp');
-
-    } catch (error) {
-        console.error("Email Error:", error); // This will show up in Render logs
-        req.flash('error_msg', 'Error sending email. Check server logs.');
-        res.redirect('/forgot-password');
+    const user = await User.findOne({ email });
+    if (!user) {
+        req.flash('error_msg', 'No account found.');
+        return res.redirect('/forgot-password');
     }
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    user.resetOTP = otp;
+    user.resetOTPExpires = Date.now() + 600000;
+    await user.save();
+    req.session.resetEmail = email;
+
+    const emailHTML = `
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f3f4f6; padding: 20px; border-radius: 10px;">
+        <div style="background-color: #ffffff; padding: 40px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); text-align: center;">
+            
+            <div style="display: inline-block; background-color: #4f46e5; padding: 12px; border-radius: 50%; margin-bottom: 20px;">
+                <img src="https://img.icons8.com/ios-filled/50/ffffff/lock.png" alt="Security" style="width: 24px; height: 24px; display: block;">
+            </div>
+
+            <h2 style="color: #1f2937; margin: 0 0 10px; font-size: 24px; font-weight: 700;">Password Reset Request</h2>
+            <p style="color: #6b7280; font-size: 16px; margin: 0 0 30px;">
+                Hello, we received a request to reset the password for your <strong>CardGuard</strong> account.
+            </p>
+
+            <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; display: inline-block; margin-bottom: 30px;">
+                <span style="font-size: 32px; font-weight: 800; letter-spacing: 5px; color: #4f46e5; display: block;">${otp}</span>
+            </div>
+
+            <p style="color: #6b7280; font-size: 14px; margin-bottom: 30px;">
+                This code is valid for <strong>10 minutes</strong>.<br>
+                If you did not request a password reset, please ignore this email.
+            </p>
+
+            <div style="border-top: 1px solid #e5e7eb; padding-top: 20px; margin-top: 20px;">
+                <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+                    &copy; ${new Date().getFullYear()} CardGuard Security Team.<br>
+                    Secure Account Notification
+                </p>
+            </div>
+        </div>
+    </div>
+    `;
+
+    transporter.sendMail({
+        from: `"CardGuard Security" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: '🔐 Your Verification Code',
+        text: emailHTML
+    }, (err) => {
+        if(err) req.flash('error_msg', 'Error sending email.');
+        else { req.flash('success_msg', 'OTP sent.'); res.redirect('/verify-otp'); }
+    });
 });
 
 app.get('/verify-otp', (req, res) => { if(!req.session.resetEmail) return res.redirect('/forgot-password'); res.render('verify-otp'); });
@@ -340,7 +344,20 @@ app.post('/verify-otp', async (req, res) => {
 app.get('/reset-password', (req, res) => { if(!req.session.isOtpVerified) return res.redirect('/forgot-password'); res.render('reset-password'); });
 app.post('/reset-password', async (req, res) => {
     const { password, confirmPassword } = req.body;
-    if(password !== confirmPassword) { req.flash('error_msg', 'Mismatch'); return res.redirect('/reset-password'); }
+
+    // 1. Check Passwords Match
+    if(password !== confirmPassword) {
+        req.flash('error_msg', 'Passwords do not match.');
+        return res.redirect('/reset-password');
+    }
+
+    // 2. Check Password Strength
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+        req.flash('error_msg', passwordError);
+        return res.redirect('/reset-password');
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await User.findOne({ email: req.session.resetEmail });
     user.password = hashedPassword; user.resetOTP = undefined; user.resetOTPExpires = undefined;
@@ -350,18 +367,82 @@ app.post('/reset-password', async (req, res) => {
 });
 
 // Notifications
+// ... existing imports
+
+// Notifications Cron Job
 cron.schedule('0 9,14,20 * * *', async () => {
     const today = new Date().getDate();
     const cards = await Card.find().populate('user');
+
     cards.forEach(card => {
         let diff = card.dueDate - today;
-        if(diff < 0) diff += 30;
+
+        // Handle month wrap-around logic (approximate)
+        if (diff < 0) diff += 30;
+
+        // Send email if due within 0-3 days
         if (diff >= 0 && diff <= 3) {
+
+            const daysText = diff === 0 ? "Due Today!" : `${diff} Days Left`;
+            const colorStatus = diff === 0 ? "#dc2626" : "#ea580c"; // Red for today, Orange for upcoming
+
+            // --- HTML EMAIL TEMPLATE ---
+            const emailHTML = `
+            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f3f4f6; padding: 20px; border-radius: 10px;">
+                <div style="background-color: #ffffff; padding: 40px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); text-align: center;">
+                    
+                    <div style="display: inline-block; background-color: #fef2f2; padding: 14px; border-radius: 50%; margin-bottom: 20px;">
+                        <img src="https://img.icons8.com/ios-filled/50/ef4444/alarm.png" alt="Alert" style="width: 28px; height: 28px; display: block;">
+                    </div>
+
+                    <h2 style="color: #1f2937; margin: 0 0 10px; font-size: 24px; font-weight: 800;">Bill Payment Reminder</h2>
+                    <p style="color: #6b7280; font-size: 16px; margin: 0 0 30px;">
+                        This is a friendly reminder that your credit card bill is due soon.
+                    </p>
+
+                    <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 25px; text-align: left; margin-bottom: 30px;">
+                        
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                            <span style="color: #6b7280; font-size: 14px; font-weight: 500;">Bank Name</span>
+                            <span style="color: #111827; font-weight: 700; font-size: 16px;">${card.bankName}</span>
+                        </div>
+
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                            <span style="color: #6b7280; font-size: 14px; font-weight: 500;">Card Ending</span>
+                            <span style="font-family: monospace; color: #111827; font-weight: 600; font-size: 16px; letter-spacing: 1px;">•••• ${card.lastFourDigits}</span>
+                        </div>
+
+                        <div style="border-top: 1px solid #e5e7eb; margin: 15px 0;"></div>
+
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <span style="color: ${colorStatus}; font-weight: 700; font-size: 14px;">Time Remaining</span>
+                            <span style="color: ${colorStatus}; font-weight: 800; font-size: 20px;">${daysText}</span>
+                        </div>
+                    </div>
+
+                    <a href="https://your-app-url.onrender.com/dashboard" style="background-color: #111827; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px; display: inline-block; transition: 0.3s;">
+                        Go to Dashboard
+                    </a>
+
+                    <div style="border-top: 1px solid #e5e7eb; padding-top: 25px; margin-top: 35px;">
+                        <p style="color: #9ca3af; font-size: 12px; margin: 0; line-height: 1.5;">
+                            &copy; ${new Date().getFullYear()} CardGuard Security.<br>
+                            You received this email because you enabled notifications for this card.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            `;
+
+            // Send Mail
             transporter.sendMail({
-                from: 'due.cardreminder@gmail.com', // <--- YOUR GMAIL ADDRESS
+                from: `"CardGuard Security" <${process.env.EMAIL_USER}>`,
                 to: card.user.email,
-                subject: `⚠️ Bill Due: ${card.bankName}`,
-                html: `<p>Pay your ${card.bankName} bill (Ending: ${card.lastFourDigits}) within ${diff} days.</p>`
+                subject: `⚠️ Action Required: ${card.bankName} Bill Due`, // More urgent subject
+                html: emailHTML
+            }, (err, info) => {
+                if(err) console.log("Error sending reminder:", err);
+                else console.log(`Reminder sent to ${card.user.email} for ${card.bankName}`);
             });
         }
     });
