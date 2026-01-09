@@ -289,44 +289,11 @@ app.post('/forgot-password', async (req, res) => {
     user.resetOTPExpires = Date.now() + 600000;
     await user.save();
     req.session.resetEmail = email;
-
-    const emailHTML = `
-    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f3f4f6; padding: 20px; border-radius: 10px;">
-        <div style="background-color: #ffffff; padding: 40px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); text-align: center;">
-            
-            <div style="display: inline-block; background-color: #4f46e5; padding: 12px; border-radius: 50%; margin-bottom: 20px;">
-                <img src="https://img.icons8.com/ios-filled/50/ffffff/lock.png" alt="Security" style="width: 24px; height: 24px; display: block;">
-            </div>
-
-            <h2 style="color: #1f2937; margin: 0 0 10px; font-size: 24px; font-weight: 700;">Password Reset Request</h2>
-            <p style="color: #6b7280; font-size: 16px; margin: 0 0 30px;">
-                Hello, we received a request to reset the password for your <strong>CardGuard</strong> account.
-            </p>
-
-            <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; display: inline-block; margin-bottom: 30px;">
-                <span style="font-size: 32px; font-weight: 800; letter-spacing: 5px; color: #4f46e5; display: block;">${otp}</span>
-            </div>
-
-            <p style="color: #6b7280; font-size: 14px; margin-bottom: 30px;">
-                This code is valid for <strong>10 minutes</strong>.<br>
-                If you did not request a password reset, please ignore this email.
-            </p>
-
-            <div style="border-top: 1px solid #e5e7eb; padding-top: 20px; margin-top: 20px;">
-                <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-                    &copy; ${new Date().getFullYear()} CardGuard Security Team.<br>
-                    Secure Account Notification
-                </p>
-            </div>
-        </div>
-    </div>
-    `;
-
     transporter.sendMail({
         from: `"CardGuard Security" <${process.env.EMAIL_USER}>`,
         to: email,
-        subject: '🔐 Your Verification Code',
-        text: emailHTML
+        subject: 'Reset Password OTP',
+        text: `Your OTP is ${otp}.`
     }, (err) => {
         if(err) req.flash('error_msg', 'Error sending email.');
         else { req.flash('success_msg', 'OTP sent.'); res.redirect('/verify-otp'); }
@@ -367,82 +334,18 @@ app.post('/reset-password', async (req, res) => {
 });
 
 // Notifications
-// ... existing imports
-
-// Notifications Cron Job
 cron.schedule('0 9,14,20 * * *', async () => {
     const today = new Date().getDate();
     const cards = await Card.find().populate('user');
-
     cards.forEach(card => {
         let diff = card.dueDate - today;
-
-        // Handle month wrap-around logic (approximate)
-        if (diff < 0) diff += 30;
-
-        // Send email if due within 0-3 days
+        if(diff < 0) diff += 30;
         if (diff >= 0 && diff <= 3) {
-
-            const daysText = diff === 0 ? "Due Today!" : `${diff} Days Left`;
-            const colorStatus = diff === 0 ? "#dc2626" : "#ea580c"; // Red for today, Orange for upcoming
-
-            // --- HTML EMAIL TEMPLATE ---
-            const emailHTML = `
-            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f3f4f6; padding: 20px; border-radius: 10px;">
-                <div style="background-color: #ffffff; padding: 40px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); text-align: center;">
-                    
-                    <div style="display: inline-block; background-color: #fef2f2; padding: 14px; border-radius: 50%; margin-bottom: 20px;">
-                        <img src="https://img.icons8.com/ios-filled/50/ef4444/alarm.png" alt="Alert" style="width: 28px; height: 28px; display: block;">
-                    </div>
-
-                    <h2 style="color: #1f2937; margin: 0 0 10px; font-size: 24px; font-weight: 800;">Bill Payment Reminder</h2>
-                    <p style="color: #6b7280; font-size: 16px; margin: 0 0 30px;">
-                        This is a friendly reminder that your credit card bill is due soon.
-                    </p>
-
-                    <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 25px; text-align: left; margin-bottom: 30px;">
-                        
-                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                            <span style="color: #6b7280; font-size: 14px; font-weight: 500;">Bank Name</span>
-                            <span style="color: #111827; font-weight: 700; font-size: 16px;">${card.bankName}</span>
-                        </div>
-
-                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                            <span style="color: #6b7280; font-size: 14px; font-weight: 500;">Card Ending</span>
-                            <span style="font-family: monospace; color: #111827; font-weight: 600; font-size: 16px; letter-spacing: 1px;">•••• ${card.lastFourDigits}</span>
-                        </div>
-
-                        <div style="border-top: 1px solid #e5e7eb; margin: 15px 0;"></div>
-
-                        <div style="display: flex; align-items: center; justify-content: space-between;">
-                            <span style="color: ${colorStatus}; font-weight: 700; font-size: 14px;">Time Remaining</span>
-                            <span style="color: ${colorStatus}; font-weight: 800; font-size: 20px;">${daysText}</span>
-                        </div>
-                    </div>
-
-                    <a href="https://your-app-url.onrender.com/dashboard" style="background-color: #111827; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px; display: inline-block; transition: 0.3s;">
-                        Go to Dashboard
-                    </a>
-
-                    <div style="border-top: 1px solid #e5e7eb; padding-top: 25px; margin-top: 35px;">
-                        <p style="color: #9ca3af; font-size: 12px; margin: 0; line-height: 1.5;">
-                            &copy; ${new Date().getFullYear()} CardGuard Security.<br>
-                            You received this email because you enabled notifications for this card.
-                        </p>
-                    </div>
-                </div>
-            </div>
-            `;
-
-            // Send Mail
             transporter.sendMail({
                 from: `"CardGuard Security" <${process.env.EMAIL_USER}>`,
                 to: card.user.email,
-                subject: `⚠️ Action Required: ${card.bankName} Bill Due`, // More urgent subject
-                html: emailHTML
-            }, (err, info) => {
-                if(err) console.log("Error sending reminder:", err);
-                else console.log(`Reminder sent to ${card.user.email} for ${card.bankName}`);
+                subject: `⚠️ Bill Due: ${card.bankName}`,
+                html: `<p>Pay your ${card.bankName} bill (Ending: ${card.lastFourDigits}) within ${diff} days.</p>`
             });
         }
     });
