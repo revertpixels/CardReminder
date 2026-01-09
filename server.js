@@ -271,30 +271,50 @@ app.post('/mark-unpaid/:id', async (req, res) => {
 
 // Password Reset
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+    host: 'smtp.gmail.com',
+    port: 465, // Use 465 for secure connection
+    secure: true,
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
 });
 
 app.get('/forgot-password', (req, res) => res.render('forgot-password'));
 app.post('/forgot-password', async (req, res) => {
     const { email } = req.body;
-    const user = await User.findOne({ email });
-    if (!user) {
-        req.flash('error_msg', 'No account found.');
-        return res.redirect('/forgot-password');
+
+    try {
+        const user = await User.findOne({ email });
+        if (!user) {
+            req.flash('error_msg', 'No account found.');
+            return res.redirect('/forgot-password');
+        }
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        user.resetOTP = otp;
+        user.resetOTPExpires = Date.now() + 600000; // 10 mins
+        await user.save();
+
+        req.session.resetEmail = email;
+
+        // Use AWAIT here to ensure email is sent before redirecting
+        await transporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: 'Reset Password OTP',
+            text: `Your OTP is ${otp}.`
+        });
+
+        console.log("Email sent successfully to:", email); // Log for debugging on Render
+        req.flash('success_msg', 'OTP sent to your email.');
+        res.redirect('/verify-otp');
+
+    } catch (error) {
+        console.error("Email Error:", error); // This will show up in Render logs
+        req.flash('error_msg', 'Error sending email. Check server logs.');
+        res.redirect('/forgot-password');
     }
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    user.resetOTP = otp;
-    user.resetOTPExpires = Date.now() + 600000;
-    await user.save();
-    req.session.resetEmail = email;
-    transporter.sendMail({
-        from: process.env.EMAIL_USER, to: email,
-        subject: 'Reset Password OTP', text: `Your OTP is ${otp}.`
-    }, (err) => {
-        if(err) req.flash('error_msg', 'Error sending email.');
-        else { req.flash('success_msg', 'OTP sent.'); res.redirect('/verify-otp'); }
-    });
 });
 
 app.get('/verify-otp', (req, res) => { if(!req.session.resetEmail) return res.redirect('/forgot-password'); res.render('verify-otp'); });
