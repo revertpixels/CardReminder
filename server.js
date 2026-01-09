@@ -81,7 +81,7 @@ app.get('/logout', (req, res) => {
     res.redirect('/');
 });
 
-// Dashboard
+// --- DASHBOARD WITH STATS CALCULATION ---
 app.get('/dashboard', async (req, res) => {
     if (!req.session.user) return res.redirect('/');
     try {
@@ -89,16 +89,25 @@ app.get('/dashboard', async (req, res) => {
 
         // --- Calculate Stats ---
         const today = new Date().getDate();
-        let stats = { total: cards.length, dueSoon: 0, billingSoon: 0, paid: 0 };
+        let stats = {
+            total: cards.length,
+            dueSoon: 0,
+            billingSoon: 0,
+            paid: 0
+        };
 
         cards.forEach(card => {
+            // 1. Paid Count
             if (card.isPaidForThisMonth) {
                 stats.paid++;
             } else {
+                // 2. Due Soon (Next 3 days) - Only count if NOT paid
                 let diff = card.dueDate - today;
-                if (diff < 0) diff += 30;
+                if (diff < 0) diff += 30; // approximate month wrap
                 if (diff >= 0 && diff <= 3) stats.dueSoon++;
             }
+
+            // 3. Billing Soon (Next 3 days)
             let billDiff = card.billingDate - today;
             if (billDiff < 0) billDiff += 30;
             if (billDiff >= 0 && billDiff <= 3) stats.billingSoon++;
@@ -217,6 +226,8 @@ app.post('/edit-card/:id', async (req, res) => {
 });
 
 // --- CARD ACTIONS ---
+
+// Delete Card (Direct)
 app.post('/delete-card/:id', async (req, res) => {
     if (!req.session.user) return res.redirect('/');
     try {
@@ -224,78 +235,99 @@ app.post('/delete-card/:id', async (req, res) => {
         req.flash('success_msg', 'Card deleted successfully.');
         res.redirect('/dashboard');
     } catch(err) {
+        console.log(err);
         req.flash('error_msg', 'Error deleting card');
         res.redirect('/dashboard');
     }
 });
 
+// Mark Paid API
 app.post('/mark-paid/:id', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
     try {
-        await Card.findOneAndUpdate({ _id: req.params.id, user: req.session.user._id }, { isPaidForThisMonth: true });
+        await Card.findOneAndUpdate(
+            { _id: req.params.id, user: req.session.user._id },
+            { isPaidForThisMonth: true }
+        );
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
     }
 });
 
+// Mark Unpaid API
 app.post('/mark-unpaid/:id', async (req, res) => {
     if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
     try {
-        await Card.findOneAndUpdate({ _id: req.params.id, user: req.session.user._id }, { isPaidForThisMonth: false });
+        await Card.findOneAndUpdate(
+            { _id: req.params.id, user: req.session.user._id },
+            { isPaidForThisMonth: false }
+        );
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
     }
 });
 
-// Password Reset Flow
+// --- BREVO EMAIL CONFIGURATION (Cleaned) ---
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+    host: 'smtp-relay.brevo.com',
+    port: 2525,             // Port 2525 is crucial for Render
+    secure: false,          // False for port 2525
+    auth: {
+        user: process.env.EMAIL_USER, // This will load '9fae6c001...' from your .env
+        pass: process.env.EMAIL_PASS  // This will load 'xsmtpsib...' from your .env
+    },
+    tls: {
+        rejectUnauthorized: false
+    },
+    connectionTimeout: 10000
+});
+
+// --- SINGLE VERIFY BLOCK ---
+transporter.verify((error, success) => {
+    if (error) {
+        console.error("❌ SMTP Connection Error:", error.message);
+    } else {
+        console.log("✅ SMTP Server is Ready (Brevo/Port 2525)");
+    }
 });
 
 app.get('/forgot-password', (req, res) => res.render('forgot-password'));
-
 app.post('/forgot-password', async (req, res) => {
     const { email } = req.body;
-    const user = await User.findOne({ email });
 
-    if (!user) {
-        req.flash('error_msg', 'No account found with that email.');
-        return res.redirect('/forgot-password');
+    try {
+        const user = await User.findOne({ email });
+        if (!user) {
+            req.flash('error_msg', 'No account found.');
+            return res.redirect('/forgot-password');
+        }
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        user.resetOTP = otp;
+        user.resetOTPExpires = Date.now() + 600000; // 10 mins
+        await user.save();
+
+        req.session.resetEmail = email;
+
+        // Use AWAIT here to ensure email is sent before redirecting
+        await transporter.sendMail({
+            from: 'due.cardreminder@gmail.com', // <--- YOUR GMAIL ADDRESS (Makes it look professional)
+            to: email,
+            subject: 'Reset Password OTP',
+            text: `Your OTP is ${otp}.`
+        });
+
+        console.log("Email sent successfully to:", email); // Log for debugging on Render
+        req.flash('success_msg', 'OTP sent to your email.');
+        res.redirect('/verify-otp');
+
+    } catch (error) {
+        console.error("Email Error:", error); // This will show up in Render logs
+        req.flash('error_msg', 'Error sending email. Check server logs.');
+        res.redirect('/forgot-password');
     }
-
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    user.resetOTP = otp;
-    user.resetOTPExpires = Date.now() + 600000; // 10 Minutes
-    await user.save();
-
-    req.session.resetEmail = email;
-    req.flash('success_msg', 'OTP is being sent to your email.');
-    res.redirect('/verify-otp');
-
-    // Background Email Send (Fast)
-    const emailHTML = `
-    <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; background: #f3f4f6; padding: 20px; border-radius: 10px;">
-        <div style="background: #ffffff; padding: 40px; border-radius: 10px; text-align: center;">
-            <div style="display: inline-block; background: #4f46e5; padding: 12px; border-radius: 50%; margin-bottom: 20px;">
-                <img src="https://img.icons8.com/ios-filled/50/ffffff/lock.png" style="width: 24px;">
-            </div>
-            <h2 style="color: #1f2937; margin-bottom: 10px;">Password Reset Request</h2>
-            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; display: inline-block; margin: 30px 0;">
-                <span style="font-size: 32px; font-weight: 800; letter-spacing: 5px; color: #4f46e5;">${otp}</span>
-            </div>
-            <p style="color: #6b7280;">Valid for 10 minutes. If you didn't request this, ignore it.</p>
-        </div>
-    </div>`;
-
-    transporter.sendMail({
-        from: `"CardGuard Security" <${process.env.EMAIL_USER}>`,
-        to: email,
-        subject: '🔐 Your Verification Code',
-        html: emailHTML
-    }).catch(err => console.error("Email Error:", err));
 });
 
 app.get('/verify-otp', (req, res) => { if(!req.session.resetEmail) return res.redirect('/forgot-password'); res.render('verify-otp'); });
@@ -309,12 +341,7 @@ app.post('/verify-otp', async (req, res) => {
 app.get('/reset-password', (req, res) => { if(!req.session.isOtpVerified) return res.redirect('/forgot-password'); res.render('reset-password'); });
 app.post('/reset-password', async (req, res) => {
     const { password, confirmPassword } = req.body;
-
-    if(password !== confirmPassword) {
-        req.flash('error_msg', 'Passwords do not match.');
-        return res.redirect('/reset-password');
-    }
-
+    if(password !== confirmPassword) { req.flash('error_msg', 'Mismatch'); return res.redirect('/reset-password'); }
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await User.findOne({ email: req.session.resetEmail });
     user.password = hashedPassword; user.resetOTP = undefined; user.resetOTPExpires = undefined;
@@ -332,7 +359,7 @@ cron.schedule('0 9,14,20 * * *', async () => {
         if(diff < 0) diff += 30;
         if (diff >= 0 && diff <= 3) {
             transporter.sendMail({
-                from: `"CardGuard Security" <${process.env.EMAIL_USER}>`,
+                from: 'due.cardreminder@gmail.com', // <--- YOUR GMAIL ADDRESS
                 to: card.user.email,
                 subject: `⚠️ Bill Due: ${card.bankName}`,
                 html: `<p>Pay your ${card.bankName} bill (Ending: ${card.lastFourDigits}) within ${diff} days.</p>`
