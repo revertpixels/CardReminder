@@ -269,38 +269,27 @@ app.post('/mark-unpaid/:id', async (req, res) => {
     }
 });
 
-// Password Reset
-// const transporter = nodemailer.createTransport({
-//     host: 'smtp.gmail.com',
-//     port: 465, // Use 465 for secure connection
-//     secure: true,
-//     auth: {
-//         user: process.env.EMAIL_USER,
-//         pass: process.env.EMAIL_PASS
-//     }
-// });
-
+// --- BREVO EMAIL CONFIGURATION (Cleaned) ---
 const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
+    host: 'smtp-relay.brevo.com',
+    port: 2525,             // Port 2525 is crucial for Render
+    secure: false,          // False for port 2525
     auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
+        user: process.env.EMAIL_USER, // This will load '9fae6c001...' from your .env
+        pass: process.env.EMAIL_PASS  // This will load 'xsmtpsib...' from your .env
     },
-    // Add this to prevent hanging on timeouts
-    connectionTimeout: 10000, // 10 seconds
-    greetingTimeout: 10000,
-    socketTimeout: 10000
+    tls: {
+        rejectUnauthorized: false
+    },
+    connectionTimeout: 10000
 });
 
-// --- ADD THIS VERIFICATION BLOCK ---
+// --- SINGLE VERIFY BLOCK ---
 transporter.verify((error, success) => {
     if (error) {
-        console.log("❌ SMTP Connection Failed during startup:");
-        console.error(error);
+        console.error("❌ SMTP Connection Error:", error.message);
     } else {
-        console.log("✅ SMTP Server is ready to take our messages");
+        console.log("✅ SMTP Server is Ready (Brevo/Port 2525)");
     }
 });
 
@@ -324,7 +313,7 @@ app.post('/forgot-password', async (req, res) => {
 
         // Use AWAIT here to ensure email is sent before redirecting
         await transporter.sendMail({
-            from: process.env.EMAIL_USER,
+            from: 'due.cardreminder@gmail.com', // <--- YOUR GMAIL ADDRESS (Makes it look professional)
             to: email,
             subject: 'Reset Password OTP',
             text: `Your OTP is ${otp}.`
@@ -370,7 +359,8 @@ cron.schedule('0 9,14,20 * * *', async () => {
         if(diff < 0) diff += 30;
         if (diff >= 0 && diff <= 3) {
             transporter.sendMail({
-                from: process.env.EMAIL_USER, to: card.user.email,
+                from: 'due.cardreminder@gmail.com', // <--- YOUR GMAIL ADDRESS
+                to: card.user.email,
                 subject: `⚠️ Bill Due: ${card.bankName}`,
                 html: `<p>Pay your ${card.bankName} bill (Ending: ${card.lastFourDigits}) within ${diff} days.</p>`
             });
